@@ -11,6 +11,8 @@ npm run replay
 
 Defaults are port `3000` and `WEBHOOK_SECRET=whsec_practice_123`. Validate with `npm test` and `npm run typecheck`.
 
+Routes are `POST /webhooks/reservations`, `POST /webhooks/messages`, `GET /reservations/:id`, and `GET /escalations?status=open`. Both webhook routes require the lowercase hex HMAC in `X-Signature`.
+
 ## Design decisions
 
 The HTTP layer preserves the raw request body for HMAC-SHA256 verification and rejects invalid requests before parsing them. The domain service stores reservations, plans, escalations, and processed IDs in memory. Reservation versions are monotonic per reservation; duplicate event IDs and stale versions are ignored, so retries and out-of-order delivery cannot regress state.
