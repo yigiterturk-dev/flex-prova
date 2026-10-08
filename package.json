@@ -2,11 +2,13 @@
   "name": "flex-prova",
   "private": true,
   "type": "module",
+  "engines": { "node": ">=22.5.0" },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "replay": "tsx scripts/replay.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "tsc"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

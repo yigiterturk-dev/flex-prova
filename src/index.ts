@@ -20,6 +20,7 @@ export function createApp(service = new GuestAutomationService(), secret = proce
       }
       const match = url.pathname.match(/^\/reservations\/([^/]+)$/);
       if (req.method === "GET" && match) { const result = service.getReservation(decodeURIComponent(match[1])); return result ? send(res, 200, result) : send(res, 404, { error: "reservation not found" }); }
+      if (req.method === "GET" && url.pathname === "/health") return send(res, 200, { status: "ok" });
       if (req.method === "GET" && url.pathname === "/escalations") return send(res, 200, service.getOpenEscalations());
       return send(res, 404, { error: "not found" });
     } catch (error) { console.error(error); return send(res, 400, { error: "invalid request" }); }
