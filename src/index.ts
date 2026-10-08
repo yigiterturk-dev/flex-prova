@@ -24,7 +24,7 @@ export function createApp(service = new GuestAutomationService(), secret = proce
       if (req.method === "GET" && url.pathname === "/health") return send(res, 200, { status: "ok" });
       if (req.method === "GET" && url.pathname === "/escalations") return send(res, 200, service.getOpenEscalations());
       return send(res, 404, { error: "not found" });
-    } catch (error) { console.error(error); return send(res, 400, { error: "invalid request" }); }
+    } catch (error) { console.error(error); return send(res, 500, { error: "internal server error" }); }
   });
 }
 

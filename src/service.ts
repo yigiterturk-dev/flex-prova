@@ -10,7 +10,7 @@ export type Classification = "question" | "maintenance" | "complaint" | "other";
 
 export interface Reservation { id: string; version: number; status: ReservationStatus; channel: string; listing: { id: string; timezone: string }; guest: { name: string; phone: string }; check_in: string; check_out: string }
 export interface PlannedMessage { id: string; reservation_id: string; kind: MessageKind; send_at: string; status: PlannedMessageStatus }
-export interface Escalation { id: string; reservation_id: string; message_id: string; reason: "urgent" | "complaint" | "urgent_and_complaint"; status: "open" | "resolved"; body: string }
+export interface Escalation { id: string; reservation_id: string; message_id: string; reason: "urgent" | "complaint" | "urgent_and_complaint" | "unknown_reservation"; status: "open" | "resolved"; body: string }
 export interface InboundMessage { message_id: string; reservation_id: string; sent_at: string; body: string }
 export interface ClassifierResult { classification: Classification; urgent: boolean }
 export interface Classifier { classify(body: string): ClassifierResult }
@@ -62,10 +62,17 @@ export class GuestAutomationService {
     for (const row of this.db.prepare("SELECT id FROM processed_messages").all() as Array<{ id: string }>) this.processedMessages.add(row.id);
   }
 
+  private claim(table: "processed_events" | "processed_messages", id: string): boolean {
+    if (!this.db) return true;
+    return this.db.prepare(`INSERT OR IGNORE INTO ${table} (id) VALUES (?)`).run(id).changes === 1;
+  }
+
   private persist(): void {
     if (!this.db) return;
-    this.db.exec("BEGIN; DELETE FROM reservations; DELETE FROM planned_messages; DELETE FROM escalations; DELETE FROM processed_events; DELETE FROM processed_messages;");
-    const insert = (table: string, id: string, value?: unknown) => value === undefined ? this.db!.prepare(`INSERT INTO ${table} (id) VALUES (?)`).run(id) : this.db!.prepare(`INSERT INTO ${table} (id, value) VALUES (?, ?)`).run(id, JSON.stringify(value));
+    this.db.exec("BEGIN;");
+    const insert = (table: string, id: string, value?: unknown) => value === undefined
+      ? this.db!.prepare(`INSERT OR IGNORE INTO ${table} (id) VALUES (?)`).run(id)
+      : this.db!.prepare(`INSERT INTO ${table} (id, value) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET value = excluded.value`).run(id, JSON.stringify(value));
     for (const [id, value] of this.reservations) insert("reservations", id, value);
     for (const [id, value] of this.messages) insert("planned_messages", id, value);
     for (const [id, value] of this.escalations) insert("escalations", id, value);
@@ -76,7 +83,7 @@ export class GuestAutomationService {
 
   handleReservationEvent(event: { event_id: string; type: string; occurred_at: string; data: Reservation & { reservation_id: string } }): void {
     if (!["reservation.created", "reservation.modified", "reservation.cancelled"].includes(event.type)) return;
-    if (this.processedEvents.has(event.event_id)) return;
+    if (this.processedEvents.has(event.event_id) || !this.claim("processed_events", event.event_id)) return;
     this.processedEvents.add(event.event_id);
     const incoming = event.data; const id = incoming.reservation_id; const current = this.reservations.get(id);
     if (current && incoming.version <= current.version) { this.persist(); return; }
@@ -87,11 +94,12 @@ export class GuestAutomationService {
   }
 
   handleMessage(message: InboundMessage): void {
-    if (this.processedMessages.has(message.message_id)) return;
+    if (this.processedMessages.has(message.message_id) || !this.claim("processed_messages", message.message_id)) return;
     this.processedMessages.add(message.message_id);
     const result = this.classifier.classify(message.body);
-    if ((result.urgent || result.classification === "complaint") && this.reservations.has(message.reservation_id)) {
-      const reason = result.urgent && result.classification === "complaint" ? "urgent_and_complaint" : result.urgent ? "urgent" : "complaint";
+    const reservationExists = this.reservations.has(message.reservation_id);
+    if (!reservationExists || result.urgent || result.classification === "complaint") {
+      const reason = !reservationExists ? "unknown_reservation" : result.urgent && result.classification === "complaint" ? "urgent_and_complaint" : result.urgent ? "urgent" : "complaint";
       const id = `esc_${message.message_id}`;
       this.escalations.set(id, { id, reservation_id: message.reservation_id, message_id: message.message_id, reason, status: "open", body: message.body });
     }
@@ -99,7 +107,8 @@ export class GuestAutomationService {
   }
 
   private planMessages(r: Reservation, createdAt: string): void {
-    const sends: Array<[MessageKind, Date]> = [["checkin_instructions", localDateTimeToUtc(r.check_in, 15, 0, r.listing.timezone)], ["checkout_reminder", localDateTimeToUtc(r.check_out, 8, 0, r.listing.timezone)]];
+    const checkIn = localDateTimeToUtc(r.check_in, 15, 0, r.listing.timezone);
+    const sends: Array<[MessageKind, Date]> = [["checkin_instructions", new Date(checkIn.getTime() - 24 * 60 * 60 * 1000)], ["checkout_reminder", localDateTimeToUtc(r.check_out, 8, 0, r.listing.timezone)]];
     if (!this.messages.has(`plan_${r.id}_welcome`)) this.messages.set(`plan_${r.id}_welcome`, { id: `plan_${r.id}_welcome`, reservation_id: r.id, kind: "welcome", send_at: new Date(createdAt).toISOString(), status: "scheduled" });
     for (const [kind, sendAt] of sends) {
       const id = `plan_${r.id}_${kind}`; const existing = this.messages.get(id);

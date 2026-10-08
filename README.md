@@ -19,7 +19,13 @@ The server persists state to SQLite at `DATABASE_PATH` (default `./data/guest-au
 
 The HTTP layer preserves the raw request body for HMAC-SHA256 verification and rejects invalid requests before parsing them. Tests use an in-memory service for isolation; the server stores reservations, plans, escalations, and processed IDs in SQLite. Reservation versions are monotonic per reservation; duplicate event IDs and stale versions are ignored, so retries and out-of-order delivery cannot regress state.
 
-Plans use each listing's IANA timezone and convert local check-in (15:00) and checkout (08:00) times to UTC. Modifications update scheduled plans; cancellations mark pending plans cancelled. Classification is deterministic and behind a `Classifier` interface, so an LLM adapter can be added without changing webhook or escalation logic. Unknown reservation messages never crash the service or create an orphan escalation.
+Plans use each listing's IANA timezone and convert local check-in (15:00) and checkout (08:00) times to UTC. The check-in instructions are scheduled exactly 24 hours before that UTC instant; this is intentional around DST transitions, where “the previous local day at 15:00” can differ. Modifications update scheduled plans; cancellations mark pending plans cancelled. Classification is deterministic and behind a `Classifier` interface, so an LLM adapter can be added without changing webhook or escalation logic. Unknown reservation messages create an `unknown_reservation` escalation so an urgent message cannot disappear silently.
+
+## Decisions
+
+- Check-in instructions use the exact instant 24 hours before local 15:00 converted to UTC, rather than subtracting one calendar day in local time.
+- A message for an unknown reservation is retained as an escalation and is not treated as successfully handled by silently dropping it.
+- SQLite dedupe claims use `INSERT OR IGNORE` against unique keys, so concurrent service instances cannot both claim the same event or message.
 
 ## Trade-offs and next steps
 
