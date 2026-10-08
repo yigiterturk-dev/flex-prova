@@ -1,0 +1,192 @@
+[
+  {
+    "event_id": "evt_001",
+    "type": "reservation.created",
+    "occurred_at": "2026-10-08T09:00:00Z",
+    "data": {
+      "reservation_id": "res_1001",
+      "version": 1,
+      "status": "confirmed",
+      "channel": "airbnb",
+      "listing": {
+        "id": "L-LDN-01",
+        "timezone": "Europe/London"
+      },
+      "guest": {
+        "name": "Emma Clarke",
+        "phone": "+447700900001"
+      },
+      "check_in": "2026-10-20",
+      "check_out": "2026-10-23"
+    }
+  },
+  {
+    "event_id": "evt_002",
+    "type": "reservation.created",
+    "occurred_at": "2026-10-08T09:05:00Z",
+    "data": {
+      "reservation_id": "res_1002",
+      "version": 1,
+      "status": "confirmed",
+      "channel": "booking",
+      "listing": {
+        "id": "L-DUB-02",
+        "timezone": "Europe/Dublin"
+      },
+      "guest": {
+        "name": "Liam Byrne",
+        "phone": "+353870000002"
+      },
+      "check_in": "2026-10-25",
+      "check_out": "2026-10-28"
+    }
+  },
+  {
+    "event_id": "evt_001",
+    "type": "reservation.created",
+    "occurred_at": "2026-10-08T09:00:00Z",
+    "data": {
+      "reservation_id": "res_1001",
+      "version": 1,
+      "status": "confirmed",
+      "channel": "airbnb",
+      "listing": {
+        "id": "L-LDN-01",
+        "timezone": "Europe/London"
+      },
+      "guest": {
+        "name": "Emma Clarke",
+        "phone": "+447700900001"
+      },
+      "check_in": "2026-10-20",
+      "check_out": "2026-10-23"
+    }
+  },
+  {
+    "event_id": "evt_004",
+    "type": "reservation.modified",
+    "occurred_at": "2026-10-08T09:20:00Z",
+    "data": {
+      "reservation_id": "res_1003",
+      "version": 2,
+      "status": "confirmed",
+      "channel": "direct",
+      "listing": {
+        "id": "L-ATH-03",
+        "timezone": "Europe/Athens"
+      },
+      "guest": {
+        "name": "Nikos Papadopoulos",
+        "phone": "+306900000003"
+      },
+      "check_in": "2026-10-16",
+      "check_out": "2026-10-19"
+    }
+  },
+  {
+    "event_id": "evt_003",
+    "type": "reservation.created",
+    "occurred_at": "2026-10-08T09:10:00Z",
+    "data": {
+      "reservation_id": "res_1003",
+      "version": 1,
+      "status": "confirmed",
+      "channel": "direct",
+      "listing": {
+        "id": "L-ATH-03",
+        "timezone": "Europe/Athens"
+      },
+      "guest": {
+        "name": "Nikos Papadopoulos",
+        "phone": "+306900000003"
+      },
+      "check_in": "2026-10-15",
+      "check_out": "2026-10-18"
+    }
+  },
+  {
+    "event_id": "evt_005",
+    "type": "reservation.cancelled",
+    "occurred_at": "2026-10-08T09:30:00Z",
+    "data": {
+      "reservation_id": "res_1002",
+      "version": 2,
+      "status": "cancelled",
+      "channel": "booking",
+      "listing": {
+        "id": "L-DUB-02",
+        "timezone": "Europe/Dublin"
+      },
+      "guest": {
+        "name": "Liam Byrne",
+        "phone": "+353870000002"
+      },
+      "check_in": "2026-10-25",
+      "check_out": "2026-10-28"
+    }
+  },
+  {
+    "event_id": "evt_006",
+    "type": "reservation.modified",
+    "occurred_at": "2026-10-08T09:40:00Z",
+    "data": {
+      "reservation_id": "res_1001",
+      "version": 2,
+      "status": "confirmed",
+      "channel": "airbnb",
+      "listing": {
+        "id": "L-LDN-01",
+        "timezone": "Europe/London"
+      },
+      "guest": {
+        "name": "Emma Clarke",
+        "phone": "+447700900001"
+      },
+      "check_in": "2026-10-25",
+      "check_out": "2026-10-27"
+    }
+  },
+  {
+    "event_id": "evt_007",
+    "type": "reservation.created",
+    "occurred_at": "2026-10-08T09:50:00Z",
+    "data": {
+      "reservation_id": "res_1004",
+      "version": 1,
+      "status": "confirmed",
+      "channel": "airbnb",
+      "listing": {
+        "id": "L-LDN-01",
+        "timezone": "Europe/London"
+      },
+      "guest": {
+        "name": "Mallory Fake",
+        "phone": "+447700900004"
+      },
+      "check_in": "2026-11-01",
+      "check_out": "2026-11-03"
+    },
+    "_tamper": true
+  },
+  {
+    "event_id": "evt_005",
+    "type": "reservation.cancelled",
+    "occurred_at": "2026-10-08T09:30:00Z",
+    "data": {
+      "reservation_id": "res_1002",
+      "version": 2,
+      "status": "cancelled",
+      "channel": "booking",
+      "listing": {
+        "id": "L-DUB-02",
+        "timezone": "Europe/Dublin"
+      },
+      "guest": {
+        "name": "Liam Byrne",
+        "phone": "+353870000002"
+      },
+      "check_in": "2026-10-25",
+      "check_out": "2026-10-28"
+    }
+  }
+]

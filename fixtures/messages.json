@@ -1,0 +1,44 @@
+[
+  {
+    "message_id": "msg_01",
+    "reservation_id": "res_1001",
+    "sent_at": "2026-10-08T10:00:00Z",
+    "body": "Hi! What's the wifi password and is there parking nearby?"
+  },
+  {
+    "message_id": "msg_02",
+    "reservation_id": "res_1003",
+    "sent_at": "2026-10-08T10:02:00Z",
+    "body": "There is water leaking from the bathroom ceiling, it's getting worse!!"
+  },
+  {
+    "message_id": "msg_03",
+    "reservation_id": "res_1001",
+    "sent_at": "2026-10-08T10:05:00Z",
+    "body": "Honestly the apartment was not clean when we arrived. I expect a partial refund."
+  },
+  {
+    "message_id": "msg_04",
+    "reservation_id": "res_9999",
+    "sent_at": "2026-10-08T10:07:00Z",
+    "body": "Hello, can I check in early?"
+  },
+  {
+    "message_id": "msg_05",
+    "reservation_id": "res_1003",
+    "sent_at": "2026-10-08T10:09:00Z",
+    "body": "Thanks, see you soon :)"
+  },
+  {
+    "message_id": "msg_02",
+    "reservation_id": "res_1003",
+    "sent_at": "2026-10-08T10:02:00Z",
+    "body": "There is water leaking from the bathroom ceiling, it's getting worse!!"
+  },
+  {
+    "message_id": "msg_06",
+    "reservation_id": "res_1001",
+    "sent_at": "2026-10-08T10:12:00Z",
+    "body": "We're locked out, the key code doesn't work and it's 11pm"
+  }
+]
