@@ -79,6 +79,13 @@ export class GuestAutomationService {
     }
   }
   private cancelPending(id: string): void { for (const message of this.messages.values()) if (message.reservation_id === id && message.status === "scheduled") message.status = "cancelled"; }
+  processDueMessages(now = new Date()): PlannedMessage[] {
+    const due: PlannedMessage[] = [];
+    for (const message of this.messages.values()) {
+      if (message.status === "scheduled" && new Date(message.send_at) <= now) { message.status = "sent"; due.push({ ...message }); }
+    }
+    return due;
+  }
   getReservation(id: string) { const reservation = this.reservations.get(id); return reservation ? { reservation, planned_messages: [...this.messages.values()].filter((m) => m.reservation_id === id), escalations: [...this.escalations.values()].filter((e) => e.reservation_id === id) } : undefined; }
   getOpenEscalations() { return [...this.escalations.values()].filter((e) => e.status === "open"); }
 }

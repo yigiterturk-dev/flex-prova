@@ -13,6 +13,8 @@ Defaults are port `3000` and `WEBHOOK_SECRET=whsec_practice_123`. Validate with 
 
 Routes are `POST /webhooks/reservations`, `POST /webhooks/messages`, `GET /reservations/:id`, and `GET /escalations?status=open`. Both webhook routes require the lowercase hex HMAC in `X-Signature`.
 
+An optional worker can be enabled with `WORKER_INTERVAL_MS=60000 npm run dev`. It logs and marks due scheduled messages as `sent`; without this variable the service only plans messages.
+
 ## Design decisions
 
 The HTTP layer preserves the raw request body for HMAC-SHA256 verification and rejects invalid requests before parsing them. The domain service stores reservations, plans, escalations, and processed IDs in memory. Reservation versions are monotonic per reservation; duplicate event IDs and stale versions are ignored, so retries and out-of-order delivery cannot regress state.
