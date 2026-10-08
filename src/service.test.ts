@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { GuestAutomationService, verifySignature } from "./service.js";
+import { createHmac } from "node:crypto";
+
+const event = (overrides: Record<string, unknown> = {}) => ({ event_id: "e1", type: "reservation.created", occurred_at: "2026-10-08T09:00:00Z", data: { reservation_id: "r1", version: 1, status: "confirmed", channel: "direct", listing: { id: "l1", timezone: "Europe/London" }, guest: { name: "A", phone: "1" }, check_in: "2026-10-20", check_out: "2026-10-23" }, ...overrides });
+
+describe("guest automation", () => {
+  it("verifies the exact raw body signature", () => { const body = '{"x":1}'; const good = createHmac("sha256", "secret").update(body).digest("hex"); expect(verifySignature(body, good, "secret")).toBe(true); expect(verifySignature('{ "x": 1 }', good, "secret")).toBe(false); expect(verifySignature(body, "bad", "secret")).toBe(false); });
+  it("is idempotent and ignores stale out-of-order events", () => { const s = new GuestAutomationService(); const created = event(); s.handleReservationEvent(created as any); s.handleReservationEvent(created as any); s.handleReservationEvent({ ...event({ event_id: "e2", type: "reservation.modified", data: { ...(created as any).data, version: 2, check_in: "2026-10-25", check_out: "2026-10-27" } }) } as any); s.handleReservationEvent(created as any); expect(s.getReservation("r1")?.reservation.check_in).toBe("2026-10-25"); expect(s.getReservation("r1")?.planned_messages.filter((m) => m.status === "scheduled")).toHaveLength(3); });
+  it("cancels pending plans", () => { const s = new GuestAutomationService(); s.handleReservationEvent(event() as any); s.handleReservationEvent({ ...event({ event_id: "e2", type: "reservation.cancelled", data: { ...(event() as any).data, version: 2, status: "cancelled" } }) } as any); expect(s.getReservation("r1")?.planned_messages.every((m) => m.status === "cancelled")).toBe(true); });
+  it("escalates complaints and urgent messages, but ignores unknown reservations", () => { const s = new GuestAutomationService(); s.handleReservationEvent(event() as any); s.handleMessage({ message_id: "m1", reservation_id: "r1", sent_at: "2026-10-08T10:00:00Z", body: "The apartment was not clean, I want a refund" }); s.handleMessage({ message_id: "m2", reservation_id: "r1", sent_at: "2026-10-08T10:00:00Z", body: "We are locked out, emergency!" }); s.handleMessage({ message_id: "m3", reservation_id: "unknown", sent_at: "2026-10-08T10:00:00Z", body: "help" }); expect(s.getOpenEscalations()).toHaveLength(2); });
+});
