@@ -2,7 +2,7 @@
 
 ## Start and health
 
-Copy `.env.example` to `.env`, set a private `WEBHOOK_SECRET`, then run `npm ci` and `npm run dev` (or `npm run build && node dist/src/index.js`). Check `GET /health` after startup. Keep `DATABASE_PATH` on durable storage and enable the worker with `WORKER_INTERVAL_MS=60000` when due-message processing is wanted.
+Copy `.env.example` to `.env`, replace the example with a private `WEBHOOK_SECRET`, then run `npm ci` and `npm run dev` (or `npm run build && node dist/src/index.js`). The server refuses to start without `WEBHOOK_SECRET`. Check `GET /health` after startup. Keep `DATABASE_PATH` on durable storage and enable the worker with `WORKER_INTERVAL_MS=60000` when due-message processing is wanted.
 
 ## Backup and restore
 
