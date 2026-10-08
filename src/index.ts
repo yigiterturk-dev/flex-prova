@@ -1,7 +1,8 @@
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { GuestAutomationService, verifySignature } from "./service.js";
 
-export function createApp(service = new GuestAutomationService(), secret = process.env.WEBHOOK_SECRET ?? "whsec_practice_123") {
+export function createApp(service = new GuestAutomationService(), secret = process.env.WEBHOOK_SECRET) {
+  if (!secret) throw new Error("WEBHOOK_SECRET is required");
   const send = (res: ServerResponse, status: number, body: unknown) => { res.writeHead(status, { "content-type": "application/json" }); res.end(JSON.stringify(body)); };
   const readBody = (req: IncomingMessage) => new Promise<string>((resolve, reject) => { let body = ""; let size = 0; req.setEncoding("utf8"); req.on("data", (chunk) => { size += Buffer.byteLength(chunk); if (size > 1_000_000) { reject(new Error("request body too large")); req.destroy(); } else body += chunk; }); req.on("end", () => resolve(body)); req.on("error", reject); });
   const isObject = (value: unknown): value is Record<string, any> => typeof value === "object" && value !== null && !Array.isArray(value);
@@ -29,8 +30,10 @@ export function createApp(service = new GuestAutomationService(), secret = proce
 
 if (process.env.NODE_ENV !== "test") {
   const port = Number(process.env.PORT ?? 3000);
-  const service = new GuestAutomationService(undefined, process.env.DATABASE_PATH ?? "./data/guest-automation.sqlite");
-  const server = createApp(service).listen(port, () => console.log(`Guest automation service listening on :${port}`));
+  const databasePath = process.env.DATABASE_PATH ?? "./data/guest-automation.sqlite";
+  const service = new GuestAutomationService(undefined, databasePath);
+  const webhookSecret = process.env.WEBHOOK_SECRET;
+  const server = createApp(service, webhookSecret).listen(port, () => console.log(`Guest automation service listening on :${port}`));
   const interval = Number(process.env.WORKER_INTERVAL_MS ?? 0);
   if (interval > 0) setInterval(() => { for (const message of service.processDueMessages()) console.log(`sent planned message ${message.id}`); }, interval).unref();
   const shutdown = () => { service.close(); server.close(() => process.exit(0)); };

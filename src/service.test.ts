@@ -4,10 +4,12 @@ import { createHmac } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createApp } from "./index.js";
 
 const event = (overrides: Record<string, unknown> = {}) => ({ event_id: "e1", type: "reservation.created", occurred_at: "2026-10-08T09:00:00Z", data: { reservation_id: "r1", version: 1, status: "confirmed", channel: "direct", listing: { id: "l1", timezone: "Europe/London" }, guest: { name: "A", phone: "1" }, check_in: "2026-10-20", check_out: "2026-10-23" }, ...overrides });
 
 describe("guest automation", () => {
+  it("fails closed when the webhook secret is missing", async () => { expect(() => createApp(new GuestAutomationService(), undefined)).toThrow("WEBHOOK_SECRET is required"); });
   it("verifies the exact raw body signature", () => { const body = '{"x":1}'; const good = createHmac("sha256", "secret").update(body).digest("hex"); expect(verifySignature(body, good, "secret")).toBe(true); expect(verifySignature('{ "x": 1 }', good, "secret")).toBe(false); expect(verifySignature(body, "bad", "secret")).toBe(false); });
   it("is idempotent and ignores stale out-of-order events", () => { const s = new GuestAutomationService(); const created = event(); s.handleReservationEvent(created as any); s.handleReservationEvent(created as any); s.handleReservationEvent({ ...event({ event_id: "e2", type: "reservation.modified", data: { ...(created as any).data, version: 2, check_in: "2026-10-25", check_out: "2026-10-27" } }) } as any); s.handleReservationEvent(created as any); expect(s.getReservation("r1")?.reservation.check_in).toBe("2026-10-25"); expect(s.getReservation("r1")?.planned_messages.filter((m) => m.status === "scheduled")).toHaveLength(3); });
   it("does not move the welcome message during a date modification", () => { const s = new GuestAutomationService(); const created = event(); s.handleReservationEvent(created as any); const before = s.getReservation("r1")?.planned_messages.find((m) => m.kind === "welcome")?.send_at; s.handleReservationEvent({ ...event({ event_id: "e2", type: "reservation.modified", data: { ...(created as any).data, version: 2, check_in: "2026-10-25" } }) } as any); expect(s.getReservation("r1")?.planned_messages.find((m) => m.kind === "welcome")?.send_at).toBe(before); });

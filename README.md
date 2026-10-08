@@ -6,10 +6,10 @@
 npm install
 npm run dev
 # another terminal
-npm run replay
+WEBHOOK_SECRET=your-secret npm run replay
 ```
 
-Defaults are port `3000` and `WEBHOOK_SECRET=whsec_practice_123`. Node.js `>=22.5.0` is required for the built-in `node:sqlite` driver. Run `npm run verify` for the complete local quality gate.
+The port defaults to `3000`. `WEBHOOK_SECRET` is required for the server and has no production fallback; use the fixture value from `.env.example` only for the local replay. Node.js `>=22.5.0` is required for the built-in `node:sqlite` driver. Run `npm run verify` for the complete local quality gate.
 
 Routes are `POST /webhooks/reservations`, `POST /webhooks/messages`, `GET /reservations/:id`, `GET /escalations?status=open`, and `GET /health`. Both webhook routes require the lowercase hex HMAC in `X-Signature`.
 

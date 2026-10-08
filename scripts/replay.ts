@@ -4,7 +4,8 @@ import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 const base = process.env.BASE_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
-const secret = process.env.WEBHOOK_SECRET ?? "whsec_practice_123";
+const secret = process.env.WEBHOOK_SECRET;
+if (!secret) throw new Error("WEBHOOK_SECRET is required for replay");
 
 const sign = (body: string) => createHmac("sha256", secret).update(body).digest("hex");
 
