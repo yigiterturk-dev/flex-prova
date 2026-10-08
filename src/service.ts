@@ -48,6 +48,7 @@ export class GuestAutomationService {
   constructor(private classifier: Classifier = new FallbackClassifier()) {}
 
   handleReservationEvent(event: { event_id: string; type: string; occurred_at: string; data: Reservation & { reservation_id: string } }): void {
+    if (!["reservation.created", "reservation.modified", "reservation.cancelled"].includes(event.type)) return;
     if (this.processedEvents.has(event.event_id)) return;
     this.processedEvents.add(event.event_id);
     const incoming = event.data; const id = incoming.reservation_id; const current = this.reservations.get(id);
@@ -69,7 +70,8 @@ export class GuestAutomationService {
   }
 
   private planMessages(r: Reservation, createdAt: string): void {
-    const sends: Array<[MessageKind, Date]> = [["welcome", new Date(createdAt)], ["checkin_instructions", localDateTimeToUtc(r.check_in, 15, 0, r.listing.timezone)], ["checkout_reminder", localDateTimeToUtc(r.check_out, 8, 0, r.listing.timezone)]];
+    const sends: Array<[MessageKind, Date]> = [["checkin_instructions", localDateTimeToUtc(r.check_in, 15, 0, r.listing.timezone)], ["checkout_reminder", localDateTimeToUtc(r.check_out, 8, 0, r.listing.timezone)]];
+    if (!this.messages.has(`plan_${r.id}_welcome`)) this.messages.set(`plan_${r.id}_welcome`, { id: `plan_${r.id}_welcome`, reservation_id: r.id, kind: "welcome", send_at: new Date(createdAt).toISOString(), status: "scheduled" });
     for (const [kind, sendAt] of sends) {
       const id = `plan_${r.id}_${kind}`; const existing = this.messages.get(id);
       if (!existing || existing.status === "cancelled") this.messages.set(id, { id, reservation_id: r.id, kind, send_at: sendAt.toISOString(), status: "scheduled" });
