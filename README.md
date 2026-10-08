@@ -13,7 +13,7 @@ Defaults are port `3000` and `WEBHOOK_SECRET=whsec_practice_123`. Validate with 
 
 Routes are `POST /webhooks/reservations`, `POST /webhooks/messages`, `GET /reservations/:id`, and `GET /escalations?status=open`. Both webhook routes require the lowercase hex HMAC in `X-Signature`.
 
-An optional worker can be enabled with `WORKER_INTERVAL_MS=60000 npm run dev`. It logs and marks due scheduled messages as `sent`; without this variable the service only plans messages.
+The server persists state to SQLite at `DATABASE_PATH` (default `./data/guest-automation.sqlite`), including dedupe keys. An optional worker can be enabled with `WORKER_INTERVAL_MS=60000 npm run dev`. It logs and marks due scheduled messages as `sent`; without this variable the service only plans messages.
 
 ## Design decisions
 
@@ -23,4 +23,4 @@ Plans use each listing's IANA timezone and convert local check-in (15:00) and ch
 
 ## Trade-offs and next steps
 
-Memory keeps the core small but loses state on restart and is not suitable for multiple instances. With another day I would add SQLite/Postgres with unique event/message constraints, a durable worker queue, structured logs/metrics, operational auth, richer DST tests, and an LLM adapter with timeout and fallback.
+The test suite uses the in-memory mode for isolation; production defaults to SQLite. SQLite is still single-process and the worker is intentionally lightweight. With another day I would move to Postgres for multi-instance operation, add a durable job queue, structured logs/metrics, operational auth, richer DST tests, and an LLM adapter with timeout and fallback.

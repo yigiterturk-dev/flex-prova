@@ -28,11 +28,13 @@ export function createApp(service = new GuestAutomationService(), secret = proce
 
 if (process.env.NODE_ENV !== "test") {
   const port = Number(process.env.PORT ?? 3000);
-  const service = new GuestAutomationService();
+  const service = new GuestAutomationService(undefined, process.env.DATABASE_PATH ?? "./data/guest-automation.sqlite");
   const server = createApp(service).listen(port, () => console.log(`Guest automation service listening on :${port}`));
   const interval = Number(process.env.WORKER_INTERVAL_MS ?? 0);
   if (interval > 0) setInterval(() => { for (const message of service.processDueMessages()) console.log(`sent planned message ${message.id}`); }, interval).unref();
-  server.on("close", () => undefined);
+  const shutdown = () => { service.close(); server.close(() => process.exit(0)); };
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
 }
 
 export { GuestAutomationService } from "./service.js";

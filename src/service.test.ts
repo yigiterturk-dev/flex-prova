@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { FallbackClassifier, GuestAutomationService, verifySignature } from "./service.js";
 import { createHmac } from "node:crypto";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const event = (overrides: Record<string, unknown> = {}) => ({ event_id: "e1", type: "reservation.created", occurred_at: "2026-10-08T09:00:00Z", data: { reservation_id: "r1", version: 1, status: "confirmed", channel: "direct", listing: { id: "l1", timezone: "Europe/London" }, guest: { name: "A", phone: "1" }, check_in: "2026-10-20", check_out: "2026-10-23" }, ...overrides });
 
@@ -13,4 +16,5 @@ describe("guest automation", () => {
   it("classifies the four supported categories", () => { const classifier = new FallbackClassifier(); expect(classifier.classify("Where is parking?").classification).toBe("question"); expect(classifier.classify("The heating is broken").classification).toBe("maintenance"); expect(classifier.classify("I want a refund, this is terrible").classification).toBe("complaint"); expect(classifier.classify("Thanks, see you soon").classification).toBe("other"); });
   it("ignores unsupported event types without creating state", () => { const s = new GuestAutomationService(); s.handleReservationEvent({ ...event({ type: "reservation.deleted" }) } as any); expect(s.getReservation("r1")).toBeUndefined(); });
   it("marks due planned messages sent exactly once", () => { const s = new GuestAutomationService(); s.handleReservationEvent(event() as any); const sent = s.processDueMessages(new Date("2026-10-08T09:00:00Z")); expect(sent.map((m) => m.kind)).toContain("welcome"); expect(s.processDueMessages(new Date("2026-10-08T09:00:01Z"))).toHaveLength(0); expect(s.getReservation("r1")?.planned_messages.find((m) => m.kind === "welcome")?.status).toBe("sent"); });
+  it("restores reservations, plans, escalations, and dedupe state from SQLite", () => { const dir = mkdtempSync(join(tmpdir(), "guest-automation-")); const path = join(dir, "state.sqlite"); const first = new GuestAutomationService(undefined, path); first.handleReservationEvent(event() as any); first.handleMessage({ message_id: "m1", reservation_id: "r1", sent_at: "2026-10-08T10:00:00Z", body: "The apartment was not clean, refund please" }); first.close(); const second = new GuestAutomationService(undefined, path); second.handleReservationEvent(event() as any); second.handleMessage({ message_id: "m1", reservation_id: "r1", sent_at: "2026-10-08T10:00:00Z", body: "The apartment was not clean, refund please" }); expect(second.getReservation("r1")?.planned_messages).toHaveLength(3); expect(second.getOpenEscalations()).toHaveLength(1); second.close(); rmSync(dir, { recursive: true, force: true }); });
 });

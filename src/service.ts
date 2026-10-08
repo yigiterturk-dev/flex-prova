@@ -1,4 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 export type ReservationStatus = "confirmed" | "cancelled";
 export type PlannedMessageStatus = "scheduled" | "cancelled" | "sent";
@@ -45,17 +48,42 @@ export class GuestAutomationService {
   private escalations = new Map<string, Escalation>();
   private processedEvents = new Set<string>();
   private processedMessages = new Set<string>();
-  constructor(private classifier: Classifier = new FallbackClassifier()) {}
+  private db?: DatabaseSync;
+  constructor(private classifier: Classifier = new FallbackClassifier(), dbPath?: string) {
+    if (dbPath) { mkdirSync(dirname(dbPath), { recursive: true }); this.db = new DatabaseSync(dbPath); this.db.exec("PRAGMA journal_mode = WAL; CREATE TABLE IF NOT EXISTS reservations (id TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS planned_messages (id TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS escalations (id TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS processed_events (id TEXT PRIMARY KEY); CREATE TABLE IF NOT EXISTS processed_messages (id TEXT PRIMARY KEY);"); this.load(); }
+  }
+
+  private load(): void {
+    if (!this.db) return;
+    for (const row of this.db.prepare("SELECT value FROM reservations").all() as Array<{ value: string }>) this.reservations.set(JSON.parse(row.value).id, JSON.parse(row.value));
+    for (const row of this.db.prepare("SELECT value FROM planned_messages").all() as Array<{ value: string }>) this.messages.set(JSON.parse(row.value).id, JSON.parse(row.value));
+    for (const row of this.db.prepare("SELECT value FROM escalations").all() as Array<{ value: string }>) this.escalations.set(JSON.parse(row.value).id, JSON.parse(row.value));
+    for (const row of this.db.prepare("SELECT id FROM processed_events").all() as Array<{ id: string }>) this.processedEvents.add(row.id);
+    for (const row of this.db.prepare("SELECT id FROM processed_messages").all() as Array<{ id: string }>) this.processedMessages.add(row.id);
+  }
+
+  private persist(): void {
+    if (!this.db) return;
+    this.db.exec("BEGIN; DELETE FROM reservations; DELETE FROM planned_messages; DELETE FROM escalations; DELETE FROM processed_events; DELETE FROM processed_messages;");
+    const insert = (table: string, id: string, value?: unknown) => value === undefined ? this.db!.prepare(`INSERT INTO ${table} (id) VALUES (?)`).run(id) : this.db!.prepare(`INSERT INTO ${table} (id, value) VALUES (?, ?)`).run(id, JSON.stringify(value));
+    for (const [id, value] of this.reservations) insert("reservations", id, value);
+    for (const [id, value] of this.messages) insert("planned_messages", id, value);
+    for (const [id, value] of this.escalations) insert("escalations", id, value);
+    for (const id of this.processedEvents) insert("processed_events", id);
+    for (const id of this.processedMessages) insert("processed_messages", id);
+    this.db.exec("COMMIT;");
+  }
 
   handleReservationEvent(event: { event_id: string; type: string; occurred_at: string; data: Reservation & { reservation_id: string } }): void {
     if (!["reservation.created", "reservation.modified", "reservation.cancelled"].includes(event.type)) return;
     if (this.processedEvents.has(event.event_id)) return;
     this.processedEvents.add(event.event_id);
     const incoming = event.data; const id = incoming.reservation_id; const current = this.reservations.get(id);
-    if (current && incoming.version <= current.version) return;
+    if (current && incoming.version <= current.version) { this.persist(); return; }
     const reservation: Reservation = { id, version: incoming.version, status: event.type === "reservation.cancelled" ? "cancelled" : incoming.status, channel: incoming.channel, listing: incoming.listing, guest: incoming.guest, check_in: incoming.check_in, check_out: incoming.check_out };
     this.reservations.set(id, reservation);
     if (reservation.status === "cancelled") this.cancelPending(id); else this.planMessages(reservation, event.occurred_at);
+    this.persist();
   }
 
   handleMessage(message: InboundMessage): void {
@@ -67,6 +95,7 @@ export class GuestAutomationService {
       const id = `esc_${message.message_id}`;
       this.escalations.set(id, { id, reservation_id: message.reservation_id, message_id: message.message_id, reason, status: "open", body: message.body });
     }
+    this.persist();
   }
 
   private planMessages(r: Reservation, createdAt: string): void {
@@ -84,8 +113,10 @@ export class GuestAutomationService {
     for (const message of this.messages.values()) {
       if (message.status === "scheduled" && new Date(message.send_at) <= now) { message.status = "sent"; due.push({ ...message }); }
     }
+    if (due.length) this.persist();
     return due;
   }
+  close(): void { this.db?.close(); }
   getReservation(id: string) { const reservation = this.reservations.get(id); return reservation ? { reservation, planned_messages: [...this.messages.values()].filter((m) => m.reservation_id === id), escalations: [...this.escalations.values()].filter((e) => e.reservation_id === id) } : undefined; }
   getOpenEscalations() { return [...this.escalations.values()].filter((e) => e.status === "open"); }
 }
